@@ -6,6 +6,7 @@ const {
     generateAdminToken
 } = require('../middlewares/token')
 const bcrypt = require('bcrypt')
+const {loginSchema} = require("../validation/loginValidation")
 
 function generateToken(user, role) {
     switch (role) {
@@ -29,18 +30,26 @@ function handleLoginSuccess(res, token, role, userId) {
         secure: true,
         sameSite: 'Strict'
     })
-    res.status(200).json({message: "Login successful"})
+
+    return res.status(200).json({message: "Login successful"})
 }
 
 exports.login = async (req, res) => {
     const {email, password} = req.body
+
+    const {error} = loginSchema.validate({email, password})
+    if (error) {
+        return res.status(400).json({error: error.details[0].message})
+    }
 
     try {
         const user = await prisma.user.findUnique({
             where: {email}
         })
 
-        if (!user) return res.status(404).json({error: 'User not found'})
+        if (!user) {
+            return res.status(404).json({error: 'User not found'})
+        }
 
         const validPassword = await bcrypt.compare(password, user.password)
 
@@ -82,6 +91,7 @@ exports.login = async (req, res) => {
         }
         return res.status(401).json({message: "Incorrect email or password"})
     } catch (err) {
+        console.error(err.message)
         res.status(500).json({message: 'Internal server error'})
     }
 }
