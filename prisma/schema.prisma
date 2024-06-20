@@ -21,6 +21,7 @@ model User {
   surname String?
   lastname String?
   password String
+  currentSessionId String?
   role Role
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

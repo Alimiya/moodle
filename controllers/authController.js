@@ -1,4 +1,10 @@
 const prisma = require('../middlewares/prisma')
+const {
+    generateStudentToken,
+    generateTeacherToken,
+    generateManagerToken,
+    generateAdminToken
+} = require('../middlewares/token')
 const bcrypt = require('bcrypt')
 
 function generateToken(user, role) {
@@ -40,11 +46,39 @@ exports.login = async (req, res) => {
 
         if (validPassword) {
 
-            req.session.userId = user.id
+            if (user.currentSessionId) {
+                await new Promise((resolve, reject) => {
+                    req.sessionStore.destroy(user.currentSessionId, err => {
+                        if (err) {
+                            console.error('Error destroying previous session')
+                            return reject(err)
+                        }
+                        resolve()
+                    })
+                })
+            }
 
-            const token = generateToken(user, user.role)
+            req.session.regenerate(async err => {
+                if (err) {
+                    return res.status(500).json({message: 'Error regenerating session'})
+                }
 
-            return handleLoginSuccess(res, token, user.role, user.id)
+                const token = generateToken(user, user.role)
+
+                req.session.user = {
+                    id: user.id,
+                    role: user.role,
+                    token: token,
+                    sessionId: user.currentSessionId
+                }
+
+                await prisma.user.update({
+                    where: {id: user.id},
+                    data: {currentSessionId: req.session.id}
+                })
+
+                handleLoginSuccess(res, token, user.role, user.id)
+            })
         }
         return res.status(401).json({message: "Incorrect email or password"})
     } catch (err) {
