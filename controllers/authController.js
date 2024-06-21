@@ -54,12 +54,10 @@ exports.login = async (req, res) => {
         const validPassword = await bcrypt.compare(password, user.password)
 
         if (validPassword) {
-
             if (user.currentSessionId) {
                 await new Promise((resolve, reject) => {
                     req.sessionStore.destroy(user.currentSessionId, err => {
                         if (err) {
-                            console.error('Error destroying previous session')
                             return reject(err)
                         }
                         resolve()
@@ -71,7 +69,6 @@ exports.login = async (req, res) => {
                 if (err) {
                     return res.status(500).json({message: 'Error regenerating session'})
                 }
-
                 const token = generateToken(user, user.role)
 
                 req.session.user = {
@@ -81,17 +78,21 @@ exports.login = async (req, res) => {
                     sessionId: user.currentSessionId
                 }
 
-                await prisma.user.update({
-                    where: {id: user.id},
-                    data: {currentSessionId: req.session.id}
-                })
+                try {
+                    await prisma.user.update({
+                        where: { id: user.id },
+                        data: { currentSessionId: req.session.id }
+                    })
+                } catch (updateError) {
+                    return res.status(500).json({ message: 'Error updating currentSessionId' })
+                }
 
-                handleLoginSuccess(res, token, user.role, user.id)
+                return handleLoginSuccess(res, token, user.role, user.id)
             })
+        } else {
+            return res.status(401).json({message: "Incorrect email or password"})
         }
-        return res.status(401).json({message: "Incorrect email or password"})
     } catch (err) {
-        console.error(err.message)
         res.status(500).json({message: 'Internal server error'})
     }
 }

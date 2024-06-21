@@ -19,7 +19,7 @@ app.use(session({
     secret: process.env.SESSION_SECRET,
     resave: false,
     saveUninitialized: true,
-    cookie: {secure: true, httpOnly: true, sameSite: 'Strict', maxAge: 20 * 60 * 1000}
+    cookie: {secure: true, httpOnly: true, sameSite: 'Strict', maxAge: process.env.TOKEN_EXPIRE * 1000}
 }))
 
 const authRoute = require('./routes/authRoute')
