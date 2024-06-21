@@ -8,28 +8,35 @@ const {
 const bcrypt = require('bcrypt')
 const {loginSchema} = require("../validation/loginValidation")
 
-function generateToken(user, role) {
+function generateToken(user, role, session) {
     switch (role) {
         case 'student':
-            return generateStudentToken(user)
+            return generateStudentToken(user, session)
         case 'teacher':
-            return generateTeacherToken(user)
+            return generateTeacherToken(user, session)
         case 'manager':
-            return generateManagerToken(user)
+            return generateManagerToken(user, session)
         case 'admin':
-            return generateAdminToken(user)
+            return generateAdminToken(user, session)
         default:
             throw new Error('Invalid role')
     }
 }
 
-function handleLoginSuccess(res, token, role, userId) {
-    res.cookie(role, token, {
+function handleLoginSuccess(req, res, token, user) {
+    res.cookie(user.role, token, {
         maxAge: process.env.TOKEN_EXPIRE * 1000,
         httpOnly: true,
         secure: true,
         sameSite: 'Strict'
     })
+
+    req.session.user = {
+        id: user.id,
+        role: user.role,
+        token: token,
+        sessionId: user.currentSessionId
+    }
 
     return res.status(200).json({message: "Login successful"})
 }
@@ -69,14 +76,7 @@ exports.login = async (req, res) => {
                 if (err) {
                     return res.status(500).json({message: 'Error regenerating session'})
                 }
-                const token = generateToken(user, user.role)
-
-                req.session.user = {
-                    id: user.id,
-                    role: user.role,
-                    token: token,
-                    sessionId: user.currentSessionId
-                }
+                const token = generateToken(user, user.role, req.session.id)
 
                 try {
                     await prisma.user.update({
@@ -87,7 +87,7 @@ exports.login = async (req, res) => {
                     return res.status(500).json({ message: 'Error updating currentSessionId' })
                 }
 
-                return handleLoginSuccess(res, token, user.role, user.id)
+                return handleLoginSuccess(req, res, token, user)
             })
         } else {
             return res.status(401).json({message: "Incorrect email or password"})
