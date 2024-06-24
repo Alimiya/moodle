@@ -5,7 +5,7 @@ const session = require('express-session')
 const MongoStore = require('connect-mongo')
 require('dotenv').config()
 
-const prisma = require('./middlewares/prisma')
+const prisma = require('./middlewares/template')
 
 const app = express()
 

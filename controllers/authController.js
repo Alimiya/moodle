@@ -1,4 +1,4 @@
-const prisma = require('../middlewares/prisma')
+const {prisma, logger} = require('../middlewares/template')
 const {
     generateStudentToken,
     generateTeacherToken,
@@ -30,14 +30,12 @@ function handleLoginSuccess(req, res, token, user) {
         token: token,
         sessionId: req.session.id
     }
-
     res.cookie(user.role, token, {
         maxAge: process.env.TOKEN_EXPIRE * 1000,
         httpOnly: true,
         secure: true,
         sameSite: 'Strict'
     })
-
     return res.status(200).json({message: "Login successful"})
 }
 
@@ -74,6 +72,7 @@ exports.login = async (req, res) => {
 
             req.session.regenerate(async err => {
                 if (err) {
+                    logger.error(err.message)
                     return res.status(500).json({message: 'Error regenerating session'})
                 }
                 const token = generateToken(user, user.role, req.session.id)
@@ -84,15 +83,62 @@ exports.login = async (req, res) => {
                         data: { currentSessionId: req.session.id }
                     })
                 } catch (updateError) {
+                    logger.error(updateError.message)
                     return res.status(500).json({ message: 'Error updating currentSessionId' })
                 }
-
+                logger.info(`${user.email} with role ${user.role} logged in`)
                 return handleLoginSuccess(req, res, token, user)
             })
         } else {
             return res.status(401).json({message: "Incorrect email or password"})
         }
     } catch (err) {
+        logger.error(err.message)
         res.status(500).json({message: 'Internal server error'})
     }
 }
+
+exports.logout = async (req, res) => {
+    if (!req.session || !req.session.user) {
+        return res.status(400).json({ message: 'No active session found' });
+    }
+
+    const { id, role, sessionId } = req.session.user;
+
+    try {
+        // Удаление всех сессий пользователя
+        await new Promise((resolve, reject) => {
+            req.sessionStore.destroy(sessionId, err => {
+                if (err) return reject(err);
+                resolve();
+            });
+        });
+
+        // Очистка currentSessionId в базе данных
+        await prisma.user.update({
+            where: { id },
+            data: { currentSessionId: null }
+        });
+
+        // Удаление куки
+        res.clearCookie(role, {
+            httpOnly: true,
+            secure: true,
+            sameSite: 'Strict'
+        });
+
+        // Удаление сессии
+        req.session.destroy(err => {
+            if (err) {
+                logger.error(`Error destroying session for user ${id}: ${err.message}`);
+                return res.status(500).json({ message: 'Error destroying session' });
+            }
+            logger.info(`User ${id} logged out`);
+            return res.status(200).json({ message: 'Logout successful' });
+        });
+
+    } catch (error) {
+        logger.error(`Error during logout for user ${id}: ${error.message}`);
+        return res.status(500).json({ message: 'Internal server error' });
+    }
+};

@@ -1,5 +1,5 @@
 const jwt = require('jsonwebtoken')
-const prisma = require('./prisma')
+const {prisma, logger} = require('./template')
 
 const verifyToken = (secretKey, role) => async (req, res, next) => {
     const token = req.cookies[role]
@@ -25,6 +25,7 @@ const verifyToken = (secretKey, role) => async (req, res, next) => {
         req.user = { id, role: userRole }
         next()
         } catch (err) {
+            logger.error(err.message)
             res.status(500).json({ message: 'Internal server error' })
         }
     })
