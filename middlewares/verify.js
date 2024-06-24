@@ -1,15 +1,32 @@
 const jwt = require('jsonwebtoken')
+const prisma = require('./prisma')
 
-const verifyToken = (secretKey, role) => (req, res, next) => {
+const verifyToken = (secretKey, role) => async (req, res, next) => {
     const token = req.cookies[role]
     if (!token) return res.status(403).json({ message: 'Unauthorized' })
 
-    jwt.verify(token, secretKey, (err, decoded) => {
+    jwt.verify(token, secretKey, async (err, decoded) => {
         if (err) return res.status(401).json({ message: 'Invalid token' })
 
-        const { _id, role: userRole } = decoded
-        req.user = { _id, role: userRole }
+        const { id, role: userRole, sessionId } = decoded
+        try {
+            const user = await prisma.user.findUnique({
+                where: {id:id}
+            })
+
+            if (!user) {
+                return res.status(404).json({ message: 'User not found' })
+            }
+
+            if (user.currentSessionId !== sessionId) {
+                return res.status(401).json({ message: 'Invalid session' })
+            }
+
+        req.user = { id, role: userRole }
         next()
+        } catch (err) {
+            res.status(500).json({ message: 'Internal server error' })
+        }
     })
 }
 

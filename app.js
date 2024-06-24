@@ -27,9 +27,11 @@ app.use(session({
     cookie: {secure: true, httpOnly: true, sameSite: 'Strict', maxAge: process.env.TOKEN_EXPIRE * 1000}
 }))
 
+const adminRoute = require('./routes/adminRoute')
 const authRoute = require('./routes/authRoute')
 const renderRoute = require('./routes/renderRoute')
 
+app.use('/api/admin', adminRoute)
 app.use('/api/auth', authRoute)
 app.use(renderRoute)
 
