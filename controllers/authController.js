@@ -24,19 +24,19 @@ function generateToken(user, role, session) {
 }
 
 function handleLoginSuccess(req, res, token, user) {
+    req.session.user = {
+        id: user.id,
+        role: user.role,
+        token: token,
+        sessionId: req.session.id
+    }
+
     res.cookie(user.role, token, {
         maxAge: process.env.TOKEN_EXPIRE * 1000,
         httpOnly: true,
         secure: true,
         sameSite: 'Strict'
     })
-
-    req.session.user = {
-        id: user.id,
-        role: user.role,
-        token: token,
-        sessionId: user.currentSessionId
-    }
 
     return res.status(200).json({message: "Login successful"})
 }

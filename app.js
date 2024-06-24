@@ -2,6 +2,7 @@ const express = require('express')
 const cookieParser = require('cookie-parser')
 const bodyParser = require('body-parser')
 const session = require('express-session')
+const MongoStore = require('connect-mongo')
 require('dotenv').config()
 
 const prisma = require('./middlewares/prisma')
@@ -16,15 +17,21 @@ app.use(bodyParser.urlencoded({extended: true}))
 app.use(bodyParser.json())
 app.use(cookieParser())
 app.use(session({
+    store: MongoStore.create({
+        mongoUrl: process.env.DATABASE_URL,
+        ttl: parseInt(process.env.TOKEN_EXPIRE, 10)
+    }),
     secret: process.env.SESSION_SECRET,
     resave: false,
-    saveUninitialized: true,
+    saveUninitialized: false,
     cookie: {secure: true, httpOnly: true, sameSite: 'Strict', maxAge: process.env.TOKEN_EXPIRE * 1000}
 }))
 
 const authRoute = require('./routes/authRoute')
+const renderRoute = require('./routes/renderRoute')
 
 app.use('/api/auth', authRoute)
+app.use(renderRoute)
 
 app.listen(process.env.PORT, () => {
     console.log(`http://localhost:${process.env.PORT}`)
