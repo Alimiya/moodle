@@ -19,12 +19,13 @@ app.use(cookieParser())
 app.use(session({
     store: MongoStore.create({
         mongoUrl: process.env.DATABASE_URL,
-        ttl: parseInt(process.env.TOKEN_EXPIRE, 10)
+        ttl: parseInt(process.env.TOKEN_EXPIRE, 10),
+        autoRemove: 'native'
     }),
     secret: process.env.SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
-    cookie: {secure: true, httpOnly: true, sameSite: 'Strict', maxAge: process.env.TOKEN_EXPIRE * 1000}
+    cookie: {secure: false, httpOnly: true, sameSite: 'Strict', maxAge: parseInt(process.env.TOKEN_EXPIRE, 10) * 1000}
 }))
 
 const adminRoute = require('./routes/adminRoute')

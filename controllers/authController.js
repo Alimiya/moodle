@@ -36,6 +36,7 @@ function handleLoginSuccess(req, res, token, user) {
         secure: true,
         sameSite: 'Strict'
     })
+    console.log(req.session.user)
     return res.status(200).json({message: "Login successful"})
 }
 
@@ -100,45 +101,51 @@ exports.login = async (req, res) => {
 
 exports.logout = async (req, res) => {
     if (!req.session || !req.session.user) {
-        return res.status(400).json({ message: 'No active session found' });
+        return res.status(400).json({ message: 'No active session found' })
     }
 
-    const { id, role, sessionId } = req.session.user;
+    const { id, role, sessionId } = req.session.user
 
     try {
-        // Удаление всех сессий пользователя
         await new Promise((resolve, reject) => {
             req.sessionStore.destroy(sessionId, err => {
-                if (err) return reject(err);
-                resolve();
-            });
-        });
+                if (err) {
+                    logger.error(`Error destroying session in MongoDB for user ${id}: ${err.message}`)
+                    return reject(err)
+                }
+                resolve()
+            })
+        })
 
-        // Очистка currentSessionId в базе данных
         await prisma.user.update({
             where: { id },
             data: { currentSessionId: null }
-        });
+        })
 
-        // Удаление куки
         res.clearCookie(role, {
             httpOnly: true,
             secure: true,
             sameSite: 'Strict'
-        });
+        })
 
-        // Удаление сессии
+        res.clearCookie('connect.sid', {
+            httpOnly: true,
+            secure: true,
+            sameSite: 'Strict'
+        })
+
         req.session.destroy(err => {
             if (err) {
-                logger.error(`Error destroying session for user ${id}: ${err.message}`);
-                return res.status(500).json({ message: 'Error destroying session' });
+                logger.error(`Error destroying session for user ${id}: ${err.message}`)
+                return res.status(500).json({ message: 'Error destroying session' })
             }
-            logger.info(`User ${id} logged out`);
-            return res.status(200).json({ message: 'Logout successful' });
-        });
+            logger.info(`User ${id} logged out`)
+            return res.status(200).json({ message: 'Logout successful' })
+        })
 
-    } catch (error) {
-        logger.error(`Error during logout for user ${id}: ${error.message}`);
-        return res.status(500).json({ message: 'Internal server error' });
+    } catch (err) {
+        logger.error(`Error during logout for user ${id}: ${err.message}`)
+        return res.status(500).json({ message: 'Internal server error' })
     }
-};
+}
+
