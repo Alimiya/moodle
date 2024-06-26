@@ -1,5 +1,5 @@
 generator client {
-  provider = "template-client-js"
+  provider = "prisma-client-js"
 }
 
 datasource db {
@@ -16,12 +16,14 @@ enum Role {
 
 model User {
   id String @id @default(auto()) @map("_id") @db.ObjectId
-  email String @unique
+  username String @unique
   firstname String
   surname String?
   lastname String?
   password String
   currentSessionId String?
+  githubId String? @unique
+  githubConfirmed Boolean @default(false)
   role Role
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

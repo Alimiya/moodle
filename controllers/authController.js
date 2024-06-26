@@ -36,21 +36,20 @@ function handleLoginSuccess(req, res, token, user) {
         secure: true,
         sameSite: 'Strict'
     })
-    console.log(req.session.user)
     return res.status(200).json({message: "Login successful"})
 }
 
 exports.login = async (req, res) => {
-    const {email, password} = req.body
+    const {username, password} = req.body
 
-    const {error} = loginSchema.validate({email, password})
+    const {error} = loginSchema.validate({username, password})
     if (error) {
         return res.status(400).json({error: error.details[0].message})
     }
 
     try {
         const user = await prisma.user.findUnique({
-            where: {email}
+            where: {username}
         })
 
         if (!user) {
@@ -87,11 +86,11 @@ exports.login = async (req, res) => {
                     logger.error(updateError.message)
                     return res.status(500).json({ message: 'Error updating currentSessionId' })
                 }
-                logger.info(`${user.email} with role ${user.role} logged in`)
+                logger.info(`${user.username} with role ${user.role} logged in`)
                 return handleLoginSuccess(req, res, token, user)
             })
         } else {
-            return res.status(401).json({message: "Incorrect email or password"})
+            return res.status(401).json({message: "Incorrect username or password"})
         }
     } catch (err) {
         logger.error(err.message)
@@ -110,7 +109,7 @@ exports.logout = async (req, res) => {
         await new Promise((resolve, reject) => {
             req.sessionStore.destroy(sessionId, err => {
                 if (err) {
-                    logger.error(`Error destroying session in MongoDB for user ${id}: ${err.message}`)
+                    logger.error(`Error destroying session in Redis for user ${id}: ${err.message}`)
                     return reject(err)
                 }
                 resolve()
