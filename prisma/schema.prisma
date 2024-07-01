@@ -24,6 +24,7 @@ model User {
   currentSessionId String?
   githubId String? @unique
   githubConfirmed Boolean @default(false)
+  githubUrl String?
   role Role
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

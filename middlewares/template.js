@@ -1,4 +1,4 @@
 const { PrismaClient } = require('@prisma/client')
-const template = new PrismaClient()
+const prisma = new PrismaClient()
 const {logger} = require('./winston')
-module.exports = {prisma: template, logger}
+module.exports = {prisma, logger}
